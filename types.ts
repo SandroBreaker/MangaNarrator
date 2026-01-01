@@ -7,6 +7,8 @@ export enum PlaybackStatus {
   ERROR = 'ERROR'
 }
 
+export type VoiceName = 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
+
 export interface NarrativeUnit {
   id: string;
   originalText: string;
@@ -20,10 +22,11 @@ export interface MangaState {
   currentIndex: number;
   status: PlaybackStatus;
   playbackSpeed: number;
+  selectedVoice: VoiceName;
   error?: string;
 }
 
 export interface AudioConfig {
-  voice: 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
+  voice: VoiceName;
   speed: number;
 }

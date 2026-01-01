@@ -1,7 +1,7 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NarrativeUnit } from "../types";
 
-// Função segura para obter a chave API sem quebrar o carregamento do script
 const getApiKey = () => {
   try {
     return process.env.API_KEY || "";
@@ -10,9 +10,6 @@ const getApiKey = () => {
   }
 };
 
-/**
- * Função auxiliar para lidar com retentativas em caso de erro 429 (Cota excedida).
- */
 async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
   try {
     return await fn();
@@ -28,7 +25,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000)
 }
 
 /**
- * Analisa uma imagem de mangá para extrair texto e descrever a cena visualmente para cegos.
+ * Analisa a imagem com foco em Audio Drama Cinematográfico (Padrão de Mercado).
  */
 export async function analyzeMangaImage(base64Image: string): Promise<NarrativeUnit[]> {
   const apiKey = getApiKey();
@@ -45,16 +42,16 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
             },
           },
           {
-            text: `Você é um narrador especialista em acessibilidade para mangás e quadrinhos. 
-            Sua tarefa é tornar esta página acessível para pessoas cegas.
-            Divida esta imagem em unidades narrativas (quadrinhos/painéis).
-            Para cada unidade, forneça:
-            1. O texto exato dos diálogos (originalText).
-            2. Uma descrição visual detalhada de personagens, expressões e ação (description).
-            3. Uma narrativa coesa em Português do Brasil que mistura diálogo e descrição de forma fluida (combinedNarrative).
+            text: `Você é um Diretor de Audio Drama e Dublagem profissional.
+            Sua tarefa é converter esta página de mangá em uma experiência auditiva cinematográfica de alto nível para fãs de anime.
             
-            IMPORTANTE: Toda a resposta deve estar em Português do Brasil.
-            Formate a saída como um array JSON de objetos com as propriedades: originalText, description, combinedNarrative.`
+            Divida a imagem em unidades narrativas e para cada uma crie:
+            1. 'originalText': O diálogo exato.
+            2. 'description': Uma nota de direção de cena (clima, iluminação, emoção).
+            3. 'combinedNarrative': Um roteiro fluido que mistura narração épica com os diálogos. 
+               O estilo deve ser imersivo, como se um narrador profissional estivesse contando uma lenda, mantendo a tensão e o impacto emocional de cada quadro.
+            
+            IMPORTANTE: Responda em Português do Brasil. Use um tom dramático e impactante.`
           },
         ],
       },
@@ -83,15 +80,12 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
         imageUrl: `data:image/jpeg;base64,${base64Image}`
       }));
     } catch (e) {
-      console.error("Falha ao processar resposta do Gemini", e);
-      throw new Error("Não foi possível processar o conteúdo da imagem.");
+      console.error("Erro no parse JSON do Gemini", e);
+      throw new Error("Erro na estrutura narrativa gerada pela IA.");
     }
   });
 }
 
-/**
- * Decodifica áudio Base64 (PCM raw) para Uint8Array.
- */
 export function decodeBase64Audio(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -102,9 +96,6 @@ export function decodeBase64Audio(base64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Converte PCM raw para AudioBuffer.
- */
 export async function decodeAudioDataToBuffer(
   data: Uint8Array,
   ctx: AudioContext,
@@ -125,7 +116,7 @@ export async function decodeAudioDataToBuffer(
 }
 
 /**
- * Gera narração de áudio (TTS) para uma unidade de texto com tratamento de cota.
+ * Gera narração com tom de Dublagem Profissional.
  */
 export async function generateNarrationAudio(text: string, voice: string = 'Fenrir'): Promise<string> {
   const apiKey = getApiKey();
@@ -133,7 +124,9 @@ export async function generateNarrationAudio(text: string, voice: string = 'Fenr
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Narre o texto a seguir com uma voz masculina, em um tom ÉPICO, DRAMÁTICO e SOLENE, como se estivesse contando a maior lenda de todos os tempos. Use português do Brasil nativo: ${text}` }] }],
+      contents: [{ parts: [{ text: `Atue como um Dublador Profissional de Anime. 
+      Narre o texto a seguir com máxima carga emocional, entonação variada e um ritmo épico. 
+      Use Português do Brasil nativo: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -145,10 +138,7 @@ export async function generateNarrationAudio(text: string, voice: string = 'Fenr
     });
 
     const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (audioData) {
-      return audioData;
-    }
-
-    throw new Error("Nenhum áudio foi gerado pelo modelo.");
+    if (audioData) return audioData;
+    throw new Error("Falha ao gerar trilha de áudio.");
   });
 }
