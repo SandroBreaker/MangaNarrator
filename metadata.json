@@ -1,0 +1,7 @@
+{
+  "name": "MangaNarrator",
+  "description": "An ultra-accessible web application designed to make mangas and comics accessible for the blind and visually impaired using Gemini AI for visual descriptions and text-to-speech.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
