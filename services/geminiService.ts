@@ -1,14 +1,5 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NarrativeUnit } from "../types";
-
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || "";
-  } catch (e) {
-    return "";
-  }
-};
 
 async function callWithRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
   try {
@@ -27,12 +18,10 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000)
  * Analisa a imagem com foco em Velocidade e Qualidade Cinematográfica.
  */
 export async function analyzeMangaImage(base64Image: string): Promise<NarrativeUnit[]> {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error("Chave de API não configurada.");
-
   return callWithRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey });
-    // Usando Gemini 3 Flash para resposta quase instantânea
+    // Sempre instanciar novo para garantir que pegamos a chave mais recente do contexto
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
@@ -75,7 +64,7 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
 
     try {
       const text = response.text;
-      if (!text) throw new Error("IA retornou corpo vazio.");
+      if (!text) throw new Error("IA retornou corpo vazio. Verifique sua chave de API.");
       const data = JSON.parse(text);
       return data.map((item: any, index: number) => ({
         ...item,
@@ -84,7 +73,7 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
       }));
     } catch (e) {
       console.error("Erro no parse JSON", e);
-      throw new Error("Erro na estrutura narrativa da IA.");
+      throw new Error("Erro na estrutura narrativa. Tente novamente.");
     }
   });
 }
@@ -119,9 +108,8 @@ export async function decodeAudioDataToBuffer(
 }
 
 export async function generateNarrationAudio(text: string, voice: string = 'Fenrir'): Promise<string> {
-  const apiKey = getApiKey();
   return callWithRetry(async () => {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `Dublagem Profissional de Anime. Texto: ${text}` }] }],
@@ -137,6 +125,6 @@ export async function generateNarrationAudio(text: string, voice: string = 'Fenr
 
     const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (audioData) return audioData;
-    throw new Error("Erro no áudio.");
+    throw new Error("Erro na geração de áudio. Verifique sua cota da API.");
   });
 }

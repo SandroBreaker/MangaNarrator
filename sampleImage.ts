@@ -1,6 +1,4 @@
-
 /**
- * Imagem de teste: One Piece - Primeira página com Gol D. Roger
- * Base64 truncado para exemplo (em um ambiente real seria o dado completo da imagem fornecida)
+ * Imagem de teste: Pixel 1x1 Válido (PNG) para evitar erros de decodificação no Modo Demonstração.
  */
-export const SAMPLE_MANGA_PAGE = "iVBORw0KGgoAAAANSUhEUgAABLAAAAV4CAYAAABv3C9+AAAACXBIWXMAAAsTAAALEwEAmpwYAAAgAElEQVR4nOzd..."; // [O conteúdo real da imagem deve ser inserido aqui para teste]
+export const SAMPLE_MANGA_PAGE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
