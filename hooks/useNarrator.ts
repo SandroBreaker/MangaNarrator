@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { MangaState, PlaybackStatus, NarrativeUnit } from '../types';
 import { generateNarrationAudio, decodeBase64Audio, decodeAudioDataToBuffer } from '../services/geminiService';
 
@@ -8,11 +8,12 @@ export function useNarrator() {
     units: [],
     currentIndex: 0,
     status: PlaybackStatus.IDLE,
-    playbackSpeed: 1.0, // Padrão 'Normal' conforme solicitado
+    playbackSpeed: 1.0,
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const activeTaskIdRef = useRef<number>(0);
 
   const initAudio = () => {
     if (!audioContextRef.current) {
@@ -24,11 +25,15 @@ export function useNarrator() {
   };
 
   const stopAudio = () => {
+    // Incrementa o ID da tarefa para cancelar qualquer processo assíncrono anterior (fetch ou decode)
+    activeTaskIdRef.current += 1;
+    
     if (sourceNodeRef.current) {
       try {
+        sourceNodeRef.current.onended = null;
         sourceNodeRef.current.stop();
       } catch (e) {
-        // Ignora se já estiver parado
+        // Áudio já parado ou não iniciado
       }
       sourceNodeRef.current = null;
     }
@@ -41,12 +46,20 @@ export function useNarrator() {
     const unit = state.units[index];
     if (!unit) return;
 
+    const currentTaskId = activeTaskIdRef.current;
     setState(prev => ({ ...prev, currentIndex: index, status: PlaybackStatus.PROCESSING }));
 
     try {
+      // Chamada à API de TTS
       const base64 = await generateNarrationAudio(unit.combinedNarrative, unit.voicePreference);
+      
+      // Se o usuário mudou de página enquanto o áudio carregava, aborta
+      if (currentTaskId !== activeTaskIdRef.current) return;
+
       const audioData = decodeBase64Audio(base64);
       const buffer = await decodeAudioDataToBuffer(audioData, audioContextRef.current!);
+
+      if (currentTaskId !== activeTaskIdRef.current) return;
 
       const source = audioContextRef.current!.createBufferSource();
       source.buffer = buffer;
@@ -54,11 +67,12 @@ export function useNarrator() {
       source.connect(audioContextRef.current!.destination);
       
       source.onended = () => {
-        // Só avança automaticamente se ainda estiver no estado PLAYING
+        // Só avança se a tarefa ainda for a ativa
+        if (currentTaskId !== activeTaskIdRef.current) return;
+        
         setState(current => {
           if (current.status === PlaybackStatus.PLAYING && index + 1 < current.units.length) {
-            // Pequeno delay para respiração entre painéis
-            setTimeout(() => playUnit(index + 1), 400);
+            setTimeout(() => playUnit(index + 1), 600); // Pausa dramática entre quadros
           } else if (index + 1 >= current.units.length) {
             return { ...current, status: PlaybackStatus.IDLE };
           }
@@ -70,8 +84,9 @@ export function useNarrator() {
       sourceNodeRef.current = source;
       setState(prev => ({ ...prev, status: PlaybackStatus.PLAYING }));
     } catch (err) {
-      console.error("Erro na reprodução imersiva", err);
-      setState(prev => ({ ...prev, status: PlaybackStatus.ERROR, error: "Ocorreu um erro na narração. Tente novamente." }));
+      if (currentTaskId !== activeTaskIdRef.current) return;
+      console.error("Erro na narração", err);
+      setState(prev => ({ ...prev, status: PlaybackStatus.ERROR, error: "Houve uma falha ao preparar a narração deste trecho." }));
     }
   }, [state.units, state.playbackSpeed]);
 
@@ -97,6 +112,7 @@ export function useNarrator() {
   };
 
   const setUnits = (units: NarrativeUnit[]) => {
+    stopAudio();
     setState(prev => ({ ...prev, units, currentIndex: 0, status: PlaybackStatus.IDLE }));
   };
 

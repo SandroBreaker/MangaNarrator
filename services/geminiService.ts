@@ -18,22 +18,20 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
           },
         },
         {
-          text: `Aja como um Mestre de RPG e Diretor de Audiolivros de Elite. Converta este mangá em uma narração imersiva para alguém que não pode ver a imagem.
+          text: `Aja como um Diretor de Dublagem e Mestre de Narrativas. Converta este mangá em uma experiência auditiva imersiva para deficientes visuais.
 
-DIRETRIZES DE IMERSÃO (TEATRO MENTAL):
-1. PROIBIDO TERMOS TÉCNICOS: Nunca use "quadrinho", "painel", "a imagem mostra" ou "está escrito".
-2. NARRATIVA FLUIDA: Descreva a cena como se estivesse vivendo ela. Em vez de "Ele está bravo", use "A fúria transborda em seu olhar, as veias de sua testa saltam enquanto ele cerra os dentes".
-3. ATMOSFERA E SOM: Descreva o som ambiente (o tilintar das espadas, o rugir do mar, o silêncio mortal).
-4. INTERPRETAÇÃO: Mescle as falas dos personagens naturalmente na narração, transmitindo o tom de voz e a intenção.
+REGRAS DE OURO:
+1. IDENTIFICAÇÃO: Identifique o gênero, idade e tom de cada personagem.
+2. CASTING DE VOZES (OBRIGATÓRIO):
+   - 'Charon': Homens adultos, mentores, vilões ou vozes graves/épicas.
+   - 'Kore': Mulheres adultas, heroínas, tons maternais ou suaves.
+   - 'Fenrir': Vozes roucas, monstros, guerreiros rudes ou gritos de impacto.
+   - 'Puck': Crianças, adolescentes, alívios cômicos ou personagens hiperativos.
+   - 'Zephyr': Narração poética de ambiente (use quando o foco for o cenário).
 
-MAPEAMENTO DE VOZES:
-- 'Charon': Voz grave, de comando ou vilanesca.
-- 'Kore': Voz feminina expressiva e clara.
-- 'Fenrir': Voz ríspida, para monstros ou ação intensa.
-- 'Puck': Voz leve, jovem ou para alívio cômico.
-- 'Zephyr': Narração poética de cenário.
+3. SEM LINGUAGEM TÉCNICA: Nunca use "quadrinho", "painel", "na imagem" ou "está escrito". Narre a cena como um audiolivro vivo.
+4. TEXTO: Mantenha tudo em Português do Brasil (PT-BR).
 
-Toda a resposta DEVE ser em Português do Brasil.
 Retorne um array JSON com: originalText, description, combinedNarrative, voicePreference.`
         },
       ],
@@ -68,7 +66,7 @@ Retorne um array JSON com: originalText, description, combinedNarrative, voicePr
     }));
   } catch (e) {
     console.error("Erro na análise imersiva", e);
-    throw new Error("Não foi possível gerar a experiência narrativa.");
+    throw new Error("O narrador se perdeu na história. Tente novamente.");
   }
 }
 
@@ -105,7 +103,7 @@ export async function generateNarrationAudio(text: string, voice: string): Promi
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `Narre com máxima emoção e interpretação: ${text}` }] }],
+    contents: [{ parts: [{ text: `Interprete este texto com emoção e ritmo cinematográfico: ${text}` }] }],
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
@@ -118,5 +116,5 @@ export async function generateNarrationAudio(text: string, voice: string): Promi
 
   const base64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   if (base64) return base64;
-  throw new Error("Falha ao sintetizar voz.");
+  throw new Error("Falha na síntese de voz.");
 }

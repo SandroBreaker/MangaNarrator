@@ -30,77 +30,86 @@ export const AccessiblePlayer: React.FC<Props> = ({
   return (
     <div 
       id="player"
-      className="fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 p-6 z-50"
+      className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-2xl border-t-2 border-slate-800 p-8 z-[200] shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
       role="region"
-      aria-label="Controles de Reprodução"
+      aria-label="Console de Navegação"
     >
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-10">
         
-        {/* Progress & Info */}
-        <div className="flex-1 w-full space-y-2">
-          <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-tighter">
-            <span>Painel {currentIndex + 1} de {totalUnits}</span>
-            <span aria-hidden="true">{Math.round(progress)}% Concluído</span>
+        {/* Progress & Meta */}
+        <div className="flex-1 w-full space-y-4">
+          <div className="flex justify-between items-end">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.3em] mb-1">Capítulo Atual</span>
+              <span className="text-2xl font-black text-white italic">PAINEL #{currentIndex + 1} <span className="text-slate-600">/ {totalUnits}</span></span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">Sincronia</span>
+              <span className="text-xl font-mono text-cyan-400">{Math.round(progress)}%</span>
+            </div>
           </div>
-          <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
             <div 
-              className="h-full bg-sky-500 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+              className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(34,211,238,0.6)]"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        {/* Core Controls */}
-        <div className="flex items-center gap-6">
+        {/* Master Controls */}
+        <div className="flex items-center gap-8">
           <button 
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="p-4 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            aria-label="Painel Anterior"
+            className="p-4 rounded-xl bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-slate-800 active:scale-90"
+            aria-label="Página Anterior"
           >
             {ICONS.Prev}
           </button>
 
           <button 
             onClick={onToggle}
-            className={`p-6 rounded-full ${isPlaying ? 'bg-amber-500' : 'bg-sky-500'} text-slate-950 hover:scale-105 active:scale-95 transition-all shadow-lg`}
-            aria-label={isPlaying ? "Pausar Narração" : "Iniciar Narração"}
+            className={`group relative p-8 rounded-full transition-all duration-300 active:scale-95 shadow-2xl ${isPlaying ? 'bg-rose-600' : 'bg-cyan-500'}`}
+            aria-label={isPlaying ? "Congelar Cena" : "Despertar Narrativa"}
           >
-            {isPlaying ? ICONS.Pause : ICONS.Play}
+            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-inherit"></div>
+            <div className="text-black group-hover:scale-110 transition-transform">
+              {isPlaying ? ICONS.Pause : ICONS.Play}
+            </div>
           </button>
 
           <button 
             onClick={onNext}
             disabled={currentIndex >= totalUnits - 1}
-            className="p-4 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            aria-label="Próximo Painel"
+            className="p-4 rounded-xl bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:cursor-not-allowed transition-all border border-slate-800 active:scale-90"
+            aria-label="Próxima Página"
           >
             {ICONS.Next}
           </button>
         </div>
 
-        {/* Speed Controls */}
-        <div className="flex items-center gap-4 bg-slate-900 p-2 rounded-2xl border border-slate-800">
-          <span className="text-xs font-bold text-slate-500 pl-2 pr-1 uppercase">Velocidade</span>
-          <select 
-            value={playbackSpeed}
-            onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-            className="bg-slate-800 text-slate-200 text-sm font-bold p-2 rounded-xl border-none focus:ring-2 focus:ring-sky-500 outline-none"
-            aria-label="Ajustar velocidade da voz"
-          >
-            <option value="0.75">0.75x</option>
-            <option value="1.0">Normal</option>
-            <option value="1.25">1.25x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2.0">Rápida</option>
-          </select>
+        {/* Elite Options */}
+        <div className="flex items-center gap-6 bg-slate-900/50 p-3 rounded-2xl border border-slate-800">
+          <div className="flex flex-col px-2">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Ritmo</span>
+            <select 
+              value={playbackSpeed}
+              onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+              className="bg-transparent text-white text-sm font-black outline-none cursor-pointer focus:text-cyan-400 transition-colors"
+              aria-label="Velocidade da Voz"
+            >
+              <option value="0.75">Lento</option>
+              <option value="1.0">Normal</option>
+              <option value="1.25">Ágil</option>
+              <option value="1.5">Rápido</option>
+              <option value="2.0">Berserk</option>
+            </select>
+          </div>
+          <div className="h-10 w-[1px] bg-slate-800"></div>
+          <div className="p-2 text-cyan-500 bg-cyan-500/10 rounded-lg">
+            {ICONS.Ghost}
+          </div>
         </div>
-      </div>
-      
-      {/* Visual focus hidden skip link for keyboard users */}
-      <div className="sr-only" aria-live="assertive">
-        {status === PlaybackStatus.PROCESSING ? "Processando áudio via Inteligência Artificial..." : ""}
-        {status === PlaybackStatus.PLAYING ? `Lendo painel ${currentIndex + 1}` : ""}
       </div>
     </div>
   );
