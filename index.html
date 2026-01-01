@@ -13,7 +13,6 @@
             color: #f8fafc;
             height: 100%;
             overflow: hidden;
-            /* Padrão de Retícula Manga (Halftone) */
             background-image: radial-gradient(#1e293b 1px, transparent 0);
             background-size: 20px 20px;
         }
@@ -21,7 +20,6 @@
             outline: 4px solid #38bdf8 !important;
             outline-offset: 2px;
         }
-        /* Scrollbars Customizadas para Sidebar e Texto */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -35,6 +33,13 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #38bdf8;
         }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanline {
+            animation: scanline 8s linear infinite;
+        }
     </style>
 <script type="importmap">
 {
@@ -43,14 +48,14 @@
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.0.379"
   }
 }
 </script>
 </head>
 <body class="h-full">
     <div id="root" class="h-full"></div>
-    <!-- Script principal para carregar o app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>

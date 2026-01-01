@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { MangaUploader } from './components/MangaUploader';
 import { NarrativeViewport } from './components/NarrativeViewport';
@@ -25,6 +24,8 @@ const App: React.FC = () => {
   const [hasCustomKey, setHasCustomKey] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showRestoreMsg, setShowRestoreMsg] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (narrator.units.length > 0) {
@@ -59,6 +60,10 @@ const App: React.FC = () => {
     }
   };
 
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
@@ -87,7 +92,6 @@ const App: React.FC = () => {
       <main className="flex-1 flex overflow-hidden w-full max-w-[1800px] mx-auto p-4 md:p-6 gap-6 relative">
         <div className={`flex-1 flex flex-col min-w-0 transition-all duration-700 relative ${isFocusMode ? 'z-[50] justify-center' : ''}`}>
           
-          {/* Alerta de Sessão Restaurada */}
           {showRestoreMsg && !isFocusMode && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-4 duration-500">
               <div className="bg-sky-500 text-slate-950 px-4 py-2 font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_#000] flex items-center gap-2">
@@ -102,6 +106,7 @@ const App: React.FC = () => {
               unit={currentUnit} 
               isLoading={isProcessing || narrator.status === PlaybackStatus.PROCESSING}
               isFocusMode={isFocusMode}
+              onUploadTrigger={triggerFileUpload}
             />
           </div>
 
@@ -132,6 +137,7 @@ const App: React.FC = () => {
                 narrator.setUnits(units);
                 setTimeout(() => narrator.initAudio(), 100);
               }}
+              externalTriggerRef={fileInputRef}
             />
           </div>
 
@@ -170,6 +176,20 @@ const App: React.FC = () => {
           </div>
         </aside>
       </main>
+
+      {/* Input de arquivo invisível para ser acionado de qualquer lugar (mobile friendly) */}
+      <div className="hidden">
+        {!narrator.units.length && (
+           <MangaUploader 
+            onProcessing={setIsProcessing}
+            onProcessed={(units) => {
+              narrator.setUnits(units);
+              setTimeout(() => narrator.initAudio(), 100);
+            }}
+            externalTriggerRef={fileInputRef}
+          />
+        )}
+      </div>
 
       <div className={`transition-all duration-700 ${isFocusMode ? 'z-[60]' : ''}`}>
         <AccessiblePlayer 
