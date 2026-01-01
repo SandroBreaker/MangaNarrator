@@ -1,6 +1,14 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NarrativeUnit } from "../types";
+
+// Função segura para obter a chave API sem quebrar o carregamento do script
+const getApiKey = () => {
+  try {
+    return process.env.API_KEY || "";
+  } catch (e) {
+    return "";
+  }
+};
 
 /**
  * Função auxiliar para lidar com retentativas em caso de erro 429 (Cota excedida).
@@ -23,9 +31,9 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000)
  * Analisa uma imagem de mangá para extrair texto e descrever a cena visualmente para cegos.
  */
 export async function analyzeMangaImage(base64Image: string): Promise<NarrativeUnit[]> {
+  const apiKey = getApiKey();
   return callWithRetry(async () => {
-    // Inicialização da instância logo antes da chamada para garantir uso da API KEY atualizada.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: {
@@ -83,7 +91,6 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
 
 /**
  * Decodifica áudio Base64 (PCM raw) para Uint8Array.
- * Implementação manual seguindo as diretrizes de evitar bibliotecas externas.
  */
 export function decodeBase64Audio(base64: string): Uint8Array {
   const binaryString = atob(base64);
@@ -97,7 +104,6 @@ export function decodeBase64Audio(base64: string): Uint8Array {
 
 /**
  * Converte PCM raw para AudioBuffer.
- * Segue exatamente a lógica de decodificação de áudio PCM raw das diretrizes do SDK.
  */
 export async function decodeAudioDataToBuffer(
   data: Uint8Array,
@@ -105,7 +111,6 @@ export async function decodeAudioDataToBuffer(
   sampleRate: number = 24000,
   numChannels: number = 1,
 ): Promise<AudioBuffer> {
-  // Converte o buffer bruto para Int16Array conforme especificado nas diretrizes.
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
@@ -123,9 +128,9 @@ export async function decodeAudioDataToBuffer(
  * Gera narração de áudio (TTS) para uma unidade de texto com tratamento de cota.
  */
 export async function generateNarrationAudio(text: string, voice: string = 'Fenrir'): Promise<string> {
+  const apiKey = getApiKey();
   return callWithRetry(async () => {
-    // Inicialização da instância logo antes da chamada.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `Narre o texto a seguir com uma voz masculina, em um tom ÉPICO, DRAMÁTICO e SOLENE, como se estivesse contando a maior lenda de todos os tempos. Use português do Brasil nativo: ${text}` }] }],
