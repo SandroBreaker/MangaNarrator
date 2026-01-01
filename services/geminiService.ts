@@ -24,6 +24,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000)
  */
 export async function analyzeMangaImage(base64Image: string): Promise<NarrativeUnit[]> {
   return callWithRetry(async () => {
+    // Inicialização da instância logo antes da chamada para garantir uso da API KEY atualizada.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
@@ -82,6 +83,7 @@ export async function analyzeMangaImage(base64Image: string): Promise<NarrativeU
 
 /**
  * Decodifica áudio Base64 (PCM raw) para Uint8Array.
+ * Implementação manual seguindo as diretrizes de evitar bibliotecas externas.
  */
 export function decodeBase64Audio(base64: string): Uint8Array {
   const binaryString = atob(base64);
@@ -95,6 +97,7 @@ export function decodeBase64Audio(base64: string): Uint8Array {
 
 /**
  * Converte PCM raw para AudioBuffer.
+ * Segue exatamente a lógica de decodificação de áudio PCM raw das diretrizes do SDK.
  */
 export async function decodeAudioDataToBuffer(
   data: Uint8Array,
@@ -102,7 +105,8 @@ export async function decodeAudioDataToBuffer(
   sampleRate: number = 24000,
   numChannels: number = 1,
 ): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer, data.byteOffset, data.byteLength / 2);
+  // Converte o buffer bruto para Int16Array conforme especificado nas diretrizes.
+  const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
@@ -120,8 +124,8 @@ export async function decodeAudioDataToBuffer(
  */
 export async function generateNarrationAudio(text: string, voice: string = 'Fenrir'): Promise<string> {
   return callWithRetry(async () => {
+    // Inicialização da instância logo antes da chamada.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Refinando o prompt para tom épico e masculino
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `Narre o texto a seguir com uma voz masculina, em um tom ÉPICO, DRAMÁTICO e SOLENE, como se estivesse contando a maior lenda de todos os tempos. Use português do Brasil nativo: ${text}` }] }],
@@ -129,7 +133,6 @@ export async function generateNarrationAudio(text: string, voice: string = 'Fenr
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            // Fenrir é uma voz masculina profunda, ideal para tons épicos
             prebuiltVoiceConfig: { voiceName: voice },
           },
         },

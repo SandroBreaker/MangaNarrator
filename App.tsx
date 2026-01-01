@@ -6,13 +6,16 @@ import { NarrativeViewport } from './components/NarrativeViewport';
 import { AccessiblePlayer } from './components/AccessiblePlayer';
 import { useNarrator } from './hooks/useNarrator';
 import { PlaybackStatus } from './types';
-import { Key, Sparkles } from 'lucide-react';
+import { Key, Target } from 'lucide-react';
 import { ICONS } from './constants';
 
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
   interface Window {
-    // Fix: Using the global AIStudio type to match environment expectations and avoid modifier mismatches.
-    aistudio: AIStudio;
+    aistudio?: AIStudio;
   }
 }
 
@@ -40,6 +43,7 @@ const App: React.FC = () => {
     if (window.aistudio) {
       try {
         await window.aistudio.openSelectKey();
+        // Assume que a seleção foi bem-sucedida para evitar condições de corrida.
         setHasCustomKey(true);
       } catch (e) {
         console.error("Falha ao abrir seletor de chave");
@@ -50,19 +54,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      
-      if (e.code === 'Space') {
-        e.preventDefault();
-        narrator.togglePlayback();
-      } else if (e.code === 'ArrowRight') {
-        narrator.nextUnit();
-      } else if (e.code === 'ArrowLeft') {
-        narrator.prevUnit();
-      } else if (e.code === 'KeyF') {
-        setIsFocusMode(prev => !prev);
-      }
+      if (e.code === 'Space') { e.preventDefault(); narrator.togglePlayback(); }
+      else if (e.code === 'ArrowRight') narrator.nextUnit();
+      else if (e.code === 'ArrowLeft') narrator.prevUnit();
+      else if (e.code === 'KeyF') setIsFocusMode(prev => !prev);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [narrator]);
@@ -70,144 +66,110 @@ const App: React.FC = () => {
   const currentUnit = narrator.units[narrator.currentIndex] || null;
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-50 flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-700`}>
-      {/* Overlay de Foco */}
+    <div className="h-screen flex flex-col bg-slate-950 overflow-hidden relative">
+      {/* Overlay de Foco Radical */}
       <div 
-        className={`fixed inset-0 bg-black/95 z-[45] transition-opacity duration-700 pointer-events-none ${isFocusMode ? 'opacity-100' : 'opacity-0'}`} 
+        className={`fixed inset-0 bg-black/98 z-[45] transition-opacity duration-1000 pointer-events-none ${isFocusMode ? 'opacity-100' : 'opacity-0'}`} 
         aria-hidden="true" 
       />
 
-      <div className={isFocusMode ? 'opacity-20 pointer-events-none transition-opacity duration-700' : 'transition-opacity duration-700'}>
+      <div className={`${isFocusMode ? 'h-0 opacity-0 overflow-hidden' : 'opacity-100 h-auto'} transition-all duration-700`}>
         <Header />
       </div>
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-12 pb-48 relative">
-        <section className="sr-only">
-          <h2>Bem-vindo ao MangaNarrator</h2>
-          <p>Esta aplicação utiliza Inteligência Artificial Gemini para descrever mangás visualmente e narrar textos para usuários cegos ou com baixa visão em Português do Brasil.</p>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-          
-          <div className={`lg:col-span-8 space-y-8 relative ${isFocusMode ? 'z-[50]' : ''}`}>
+      <main className="flex-1 flex overflow-hidden w-full max-w-[1800px] mx-auto p-4 md:p-6 gap-6 relative">
+        {/* Visualização de Conteúdo (Expansível) */}
+        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-700 relative ${isFocusMode ? 'z-[50] justify-center' : ''}`}>
+          <div className="flex-1 min-h-0">
             <NarrativeViewport 
               unit={currentUnit} 
               isLoading={isProcessing || narrator.status === PlaybackStatus.PROCESSING}
               isFocusMode={isFocusMode}
             />
-            
-            <div className={isFocusMode ? 'hidden' : ''}>
-              {narrator.status === PlaybackStatus.ERROR && (
-                <div role="alert" className="p-6 bg-red-900/30 border border-red-500 rounded-xl text-red-200 shadow-2xl animate-in fade-in slide-in-from-top-4">
-                  <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-                    <span>Ops! Ocorreu um erro</span>
-                  </h3>
-                  <p className="mb-4">{narrator.error}</p>
-                  <div className="flex flex-wrap gap-4">
-                    <button 
-                      onClick={() => narrator.togglePlayback()}
-                      className="px-6 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors shadow-lg"
-                    >
-                      Tentar novamente
-                    </button>
-                    {narrator.error?.includes("Limite") && (
-                      <button 
-                        onClick={handleOpenKeySelector}
-                        className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-2"
-                      >
-                        <Key size={18} />
-                        Usar Minha Própria Chave API
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {!currentUnit && !isProcessing && (
-                <div className="text-center py-20 bg-slate-900/30 rounded-3xl border border-slate-800">
-                  <p className="text-slate-400 text-lg mb-2">Pronto para começar sua leitura?</p>
-                  <p className="text-slate-500 italic">Faça o upload de uma página ou use o exemplo para iniciar a narração adaptada.</p>
-                </div>
-              )}
-            </div>
           </div>
 
-          <aside className={`lg:col-span-4 space-y-6 transition-opacity duration-700 ${isFocusMode ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-            <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-              <div className="p-4 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center">
-                <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  Gerenciar Conteúdo
-                </h3>
+          {!isFocusMode && narrator.status === PlaybackStatus.ERROR && (
+            <div role="alert" className="mt-4 p-4 bg-rose-950/40 border-4 border-rose-600 rounded-none shadow-[6px_6px_0px_#000] text-rose-100 animate-in slide-in-from-bottom-2">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 bg-rose-600"></div>
+                <div>
+                  <p className="font-black uppercase italic text-sm tracking-tighter">Erro Crítico de Análise</p>
+                  <p className="text-xs opacity-80">{narrator.error}</p>
+                </div>
               </div>
-              <MangaUploader 
-                onProcessing={setIsProcessing}
-                onProcessed={(units) => {
-                  narrator.setUnits(units);
-                  setTimeout(() => narrator.initAudio(), 100);
-                }}
-              />
             </div>
-
-            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-4 shadow-xl">
-              <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Configurações</h3>
-              
-              <button 
-                onClick={() => setIsFocusMode(!isFocusMode)}
-                className={`w-full py-3 px-4 rounded-xl flex items-center justify-between transition-all ${isFocusMode ? 'bg-sky-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'}`}
-                aria-pressed={isFocusMode}
-              >
-                <div className="flex items-center gap-2">
-                  {ICONS.Focus}
-                  <span className="text-sm">Modo de Foco Imersivo</span>
-                </div>
-                <kbd className={`text-[10px] px-1.5 py-0.5 rounded ${isFocusMode ? 'bg-sky-600 text-white' : 'bg-slate-700 text-slate-400'}`}>F</kbd>
-              </button>
-
-              <button 
-                onClick={handleOpenKeySelector}
-                className={`w-full py-3 px-4 rounded-xl flex items-center justify-between transition-all ${hasCustomKey ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'}`}
-              >
-                <div className="flex items-center gap-2">
-                  <Key size={18} />
-                  <span className="text-sm font-bold">{hasCustomKey ? 'Chave Personalizada Ativa' : 'Usar Chave API Própria'}</span>
-                </div>
-              </button>
-            </div>
-
-            <div className="p-6 bg-sky-950/20 rounded-2xl border border-sky-500/20 text-sky-200/70 text-sm leading-relaxed">
-              <p className="font-bold text-sky-400 mb-2">Comandos Rápidos</p>
-              <ul className="space-y-1">
-                <li><kbd className="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-xs text-white">Espaço</kbd> Tocar / Pausar</li>
-                <li><kbd className="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-xs text-white">← / →</kbd> Mudar quadrinho</li>
-                <li><kbd className="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-xs text-white">F</kbd> Modo de Foco</li>
-              </ul>
-            </div>
-          </aside>
+          )}
         </div>
+
+        {/* Sidebar Otaku-Style */}
+        <aside className={`w-[340px] flex-col gap-6 overflow-y-auto pr-2 transition-all duration-700 hidden lg:flex ${isFocusMode ? 'opacity-0 pointer-events-none translate-x-12' : 'opacity-100 translate-x-0'}`}>
+          
+          <div className="bg-slate-900 border-4 border-slate-800 p-4 shadow-[8px_8px_0px_#1e293b] relative group">
+            <div className="absolute top-0 right-0 w-8 h-8 bg-sky-500/10 flex items-center justify-center border-b-4 border-l-4 border-slate-800">
+              <Target size={12} className="text-sky-500" />
+            </div>
+            <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-sky-400 mb-4 italic">
+              Terminal de Upload
+            </h3>
+            <MangaUploader 
+              onProcessing={setIsProcessing}
+              onProcessed={(units) => {
+                narrator.setUnits(units);
+                setTimeout(() => narrator.initAudio(), 100);
+              }}
+            />
+          </div>
+
+          <div className="bg-slate-900 border-4 border-slate-800 p-5 shadow-[8px_8px_0px_#1e293b] space-y-4">
+            <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-rose-500 italic">Core Settings</h3>
+            
+            <button 
+              onClick={() => setIsFocusMode(!isFocusMode)}
+              className={`w-full py-3 px-4 flex items-center justify-between border-2 transition-all active:translate-x-1 active:translate-y-1 active:shadow-none ${isFocusMode ? 'bg-sky-500 border-sky-400 text-slate-950 shadow-[4px_4px_0px_#000] font-black' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-sky-500 shadow-[4px_4px_0px_#000]'}`}
+            >
+              <div className="flex items-center gap-3">
+                {ICONS.Focus}
+                <span className="font-black uppercase text-[11px] tracking-widest italic">Modo Zen</span>
+              </div>
+              <kbd className="text-[9px] bg-black/30 px-2 py-0.5 rounded border border-white/10 font-bold">F</kbd>
+            </button>
+
+            <button 
+              onClick={handleOpenKeySelector}
+              className={`w-full py-3 px-4 flex items-center justify-between border-2 transition-all active:translate-x-1 active:translate-y-1 active:shadow-none ${hasCustomKey ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400 shadow-[4px_4px_0px_#000]' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-emerald-500 shadow-[4px_4px_0px_#000]'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Key size={16} />
+                <span className="font-black uppercase text-[11px] tracking-widest italic">{hasCustomKey ? 'API Ativa' : 'Unlock Pro AI'}</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="mt-auto p-4 bg-slate-900/30 border-2 border-dashed border-slate-800 text-[9px] text-slate-600 font-black uppercase tracking-widest leading-loose italic">
+            <p className="text-sky-600 mb-1 tracking-tighter">— Controller Shortcuts —</p>
+            <div className="flex flex-col gap-1">
+              <span>[Space] Toggle Audio Link</span>
+              <span>[Arrows] Jump Panels</span>
+              <span>[F] Immersion Protocol</span>
+            </div>
+          </div>
+        </aside>
       </main>
 
-      <div className="sr-only" aria-live="polite">
-        {isFocusMode ? "Modo de foco ativado. O restante da página foi escurecido." : "Modo de foco desativado."}
+      {/* Rodapé de Controle Fixo */}
+      <div className={`transition-all duration-700 ${isFocusMode ? 'z-[60]' : ''}`}>
+        <AccessiblePlayer 
+          status={narrator.status}
+          currentIndex={narrator.currentIndex}
+          totalUnits={narrator.units.length}
+          playbackSpeed={narrator.playbackSpeed}
+          onToggle={narrator.togglePlayback}
+          onNext={narrator.nextUnit}
+          onPrev={narrator.prevUnit}
+          onSpeedChange={narrator.setSpeed}
+          isFocusMode={isFocusMode}
+        />
       </div>
-
-      {narrator.units.length > 0 && (
-        <div className={`relative z-[60]`}>
-          <AccessiblePlayer 
-            status={narrator.status}
-            currentIndex={narrator.currentIndex}
-            totalUnits={narrator.units.length}
-            playbackSpeed={narrator.playbackSpeed}
-            onToggle={narrator.togglePlayback}
-            onNext={narrator.nextUnit}
-            onPrev={narrator.prevUnit}
-            onSpeedChange={narrator.setSpeed}
-          />
-        </div>
-      )}
-      
-      <footer className={`py-8 px-6 text-center text-slate-600 text-xs border-t border-slate-900 mt-auto transition-opacity duration-700 ${isFocusMode ? 'opacity-0' : 'opacity-100'}`} role="contentinfo">
-        <p>MangaNarrator v1.3.0 — Empoderando a leitura inclusiva através de IA Generativa.</p>
-      </footer>
     </div>
   );
 };

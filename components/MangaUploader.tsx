@@ -20,7 +20,7 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing }) =>
       const units = await analyzeMangaImage(base64);
       onProcessed(units);
     } catch (err) {
-      setError("Falha ao processar imagem via AI. Tente novamente.");
+      setError("AI Vision Error: Retículas ilegíveis.");
     } finally {
       onProcessing(false);
     }
@@ -29,12 +29,6 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing }) =>
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setError("Por favor, selecione apenas arquivos de imagem.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result?.toString().split(',')[1];
@@ -43,58 +37,33 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing }) =>
     reader.readAsDataURL(file);
   };
 
-  const handleLoadSample = () => {
-    processImageBase64(SAMPLE_MANGA_PAGE);
-  };
-
   return (
-    <section id="uploader" className="w-full max-w-2xl mx-auto p-8" aria-labelledby="upload-heading">
-      <h2 id="upload-heading" className="text-xl font-bold mb-4 sr-only">Upload de Manga</h2>
-      
-      <div className="space-y-4">
-        <label 
-          htmlFor="manga-upload" 
-          className="relative group flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-900/50 hover:bg-slate-900 hover:border-sky-500 cursor-pointer transition-all duration-300"
-        >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <div className="p-4 bg-slate-800 rounded-full mb-4 text-sky-400 group-hover:scale-110 transition-transform">
-              {ICONS.Upload}
-            </div>
-            <p className="mb-2 text-lg text-slate-300 font-semibold text-center px-4">
-              Arraste ou clique para enviar uma página
-            </p>
-            <p className="text-sm text-slate-500">Formatos: JPG, PNG, WEBP</p>
+    <div className="space-y-4">
+      <label className="group flex flex-col items-center justify-center w-full h-32 border-4 border-dashed border-slate-800 bg-slate-950 hover:bg-slate-900 hover:border-sky-500 cursor-pointer transition-all">
+        <div className="flex flex-col items-center justify-center p-4">
+          <div className="text-sky-400 group-hover:scale-110 transition-transform mb-2">
+            {ICONS.Upload}
           </div>
-          
-          <input 
-            id="manga-upload" 
-            type="file" 
-            className="sr-only" 
-            accept="image/*"
-            onChange={handleFileChange}
-            aria-describedby="upload-hint"
-          />
-        </label>
+          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest text-center">
+            Upload Manga Page
+          </p>
+        </div>
+        <input type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
+      </label>
 
-        <button
-          onClick={handleLoadSample}
-          className="w-full py-4 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-200 font-bold flex items-center justify-center gap-3 transition-all active:scale-95"
-          aria-label="Carregar imagem de exemplo: One Piece"
-        >
-          {ICONS.Play}
-          Usar Imagem de Exemplo (One Piece)
-        </button>
-      </div>
-      
-      <div id="upload-hint" className="mt-4 text-slate-400 text-sm italic text-center">
-        Dica: O sistema extrairá diálogos e gerará descrições visuais detalhadas automaticamente em Português.
-      </div>
+      <button
+        onClick={() => processImageBase64(SAMPLE_MANGA_PAGE)}
+        className="w-full py-3 px-4 bg-rose-600 border-2 border-rose-500 text-white font-black uppercase italic text-xs tracking-tighter flex items-center justify-center gap-3 transition-all active:translate-x-0.5 active:translate-y-0.5 shadow-[4px_4px_0px_#000]"
+      >
+        {ICONS.Play}
+        Quick Start (One Piece)
+      </button>
 
       {error && (
-        <div role="alert" className="mt-4 p-4 bg-red-900/20 border border-red-500/50 text-red-200 rounded-lg">
+        <div className="p-2 border-2 border-rose-500 text-rose-500 text-[9px] font-black uppercase bg-rose-950/20">
           {error}
         </div>
       )}
-    </section>
+    </div>
   );
 };
