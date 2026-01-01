@@ -1,12 +1,17 @@
-
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { analyzeMangaImage } from '../services/geminiService';
 import { NarrativeUnit } from '../types';
 import { SAMPLE_MANGA_PAGE } from '../sampleImage';
-import * as pdfjs from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
+// Usando uma abordagem robusta para capturar o objeto da biblioteca,
+// lidando com o fato de que alguns bundlers/CDNs colocam as exportações em um campo 'default'.
+const pdfjs: any = (pdfjsLib as any).default || pdfjsLib;
+
+if (pdfjs && pdfjs.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+}
 
 interface Props {
   onProcessed: (units: NarrativeUnit[]) => void;
@@ -40,7 +45,6 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing, exte
         let width = img.width;
         let height = img.height;
 
-        // Redimensionar se for muito grande para evitar lentidão na API
         const MAX_DIM = 1600;
         if (width > height) {
           if (width > MAX_DIM) {
@@ -78,7 +82,13 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing, exte
       if (file.type === 'application/pdf') {
         onProcessing("Renderizando PDF...");
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+        
+        if (!pdfjs || typeof pdfjs.getDocument !== 'function') {
+          throw new Error("Biblioteca PDF.js não inicializada corretamente.");
+        }
+
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 1.5 });
         
@@ -87,21 +97,24 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing, exte
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         
-        await page.render({ canvasContext: context!, viewport }).promise;
+        // Fix: Fazendo o cast para any para evitar erro de checagem estrita no RenderParameters do pdfjs-dist
+        // que pode variar dependendo da versão ou do ambiente de tipos.
+        await (page as any).render({ canvasContext: context!, viewport }).promise;
         const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
         await processImageBase64(base64);
       } else {
         resizeAndProcess(file);
       }
-    } catch (err) {
-      setError("Erro ao carregar arquivo.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erro ao carregar arquivo.");
       onProcessing(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      <label className="group flex flex-col items-center justify-center w-full h-32 border-4 border-dashed border-slate-800 bg-slate-950 hover:bg-slate-900 hover:border-sky-500 cursor-pointer transition-all">
+      <label className="group flex flex-col items-center justify-center w-full h-32 border-4 border-dashed border-slate-800 bg-slate-950 hover:bg-slate-900 hover:border-sky-500 cursor-pointer transition-all focus-within:border-sky-500">
         <div className="flex flex-col items-center justify-center p-4">
           <div className="text-sky-400 group-hover:scale-110 transition-transform mb-2">
             {ICONS.Upload}
@@ -115,20 +128,22 @@ export const MangaUploader: React.FC<Props> = ({ onProcessed, onProcessing, exte
           type="file" 
           className="sr-only" 
           accept="image/*,.pdf" 
-          onChange={handleFileChange} 
+          onChange={handleFileChange}
+          aria-label="Fazer upload de mangá ou PDF"
         />
       </label>
 
       <button
         onClick={() => processImageBase64(SAMPLE_MANGA_PAGE)}
         className="w-full py-3 px-4 bg-rose-600 border-2 border-rose-500 text-white font-black uppercase italic text-xs tracking-tighter flex items-center justify-center gap-3 transition-all active:translate-x-0.5 active:translate-y-0.5 shadow-[4px_4px_0px_#000]"
+        aria-label="Iniciar modo demonstração com mangá de exemplo"
       >
         {ICONS.Play}
         Modo Demonstração
       </button>
 
       {error && (
-        <div className="p-2 border-2 border-rose-500 text-rose-500 text-[9px] font-black uppercase bg-rose-950/20">
+        <div className="p-2 border-2 border-rose-500 text-rose-500 text-[9px] font-black uppercase bg-rose-950/20" role="alert">
           {error}
         </div>
       )}

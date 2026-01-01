@@ -18,17 +18,17 @@
         }
         :focus {
             outline: 4px solid #38bdf8 !important;
-            outline-offset: 2px;
+            outline-offset: 4px;
         }
         ::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
         ::-webkit-scrollbar-track {
             background: #0f172a;
         }
         ::-webkit-scrollbar-thumb {
             background: #334155;
-            border-radius: 0px;
+            border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #38bdf8;
@@ -40,6 +40,17 @@
         .scanline {
             animation: scanline 8s linear infinite;
         }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
     </style>
 <script type="importmap">
 {
@@ -49,7 +60,7 @@
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.0.379"
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@3.11.174"
   }
 }
 </script>

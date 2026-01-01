@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { MangaUploader } from './components/MangaUploader';
@@ -6,7 +5,7 @@ import { NarrativeViewport } from './components/NarrativeViewport';
 import { AccessiblePlayer } from './components/AccessiblePlayer';
 import { useNarrator } from './hooks/useNarrator';
 import { PlaybackStatus } from './types';
-import { Key, Target, RotateCcw } from 'lucide-react';
+import { Key, RotateCcw } from 'lucide-react';
 import { ICONS } from './constants';
 
 declare global {
@@ -25,8 +24,19 @@ const App: React.FC = () => {
   const [hasCustomKey, setHasCustomKey] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showRestoreMsg, setShowRestoreMsg] = useState(false);
+  const [ariaAnnounce, setAriaAnnounce] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Screen Reader Announcer
+  useEffect(() => {
+    if (processingStatus) {
+      setAriaAnnounce(`Status: ${processingStatus}`);
+    } else if (narrator.status === PlaybackStatus.PLAYING) {
+      const unit = narrator.units[narrator.currentIndex];
+      if (unit) setAriaAnnounce(`Lendo painel ${narrator.currentIndex + 1}: ${unit.combinedNarrative}`);
+    }
+  }, [processingStatus, narrator.status, narrator.currentIndex]);
 
   useEffect(() => {
     if (narrator.units.length > 0) {
@@ -68,7 +78,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      if (e.code === 'Space') { e.preventDefault(); narrator.togglePlayback(); }
+      if (e.code === 'Space') { 
+        e.preventDefault(); 
+        narrator.togglePlayback(); 
+      }
       else if (e.code === 'ArrowRight') narrator.nextUnit();
       else if (e.code === 'ArrowLeft') narrator.prevUnit();
       else if (e.code === 'KeyF') setIsFocusMode(prev => !prev);
@@ -81,6 +94,11 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-slate-950 overflow-hidden relative">
+      {/* Aria Live Region for Screen Readers */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {ariaAnnounce}
+      </div>
+
       <div 
         className={`fixed inset-0 bg-black/98 z-[45] transition-opacity duration-1000 pointer-events-none ${isFocusMode ? 'opacity-100' : 'opacity-0'}`} 
       />
@@ -95,7 +113,7 @@ const App: React.FC = () => {
           {showRestoreMsg && !isFocusMode && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-4 duration-500">
               <div className="bg-sky-500 text-slate-950 px-4 py-2 font-black uppercase text-[10px] tracking-widest shadow-[4px_4px_0px_#000] flex items-center gap-2">
-                <RotateCcw size={14} className="animate-spin-slow" />
+                <RotateCcw size={14} className="animate-spin" style={{ animationDuration: '3s' }} />
                 Sessão Restaurada
               </div>
             </div>
@@ -133,17 +151,18 @@ const App: React.FC = () => {
           <div className="bg-slate-900 border-4 border-slate-800 p-5 shadow-[8px_8px_0px_#1e293b] space-y-4">
             <button 
               onClick={() => setIsFocusMode(!isFocusMode)}
-              className={`w-full py-3 px-4 flex items-center justify-between border-2 transition-all ${isFocusMode ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}
+              className={`w-full py-3 px-4 flex items-center justify-between border-2 transition-all hover:bg-slate-800 ${isFocusMode ? 'bg-sky-500 text-slate-950 border-sky-400' : 'bg-slate-900 text-slate-300 border-slate-700'}`}
+              aria-pressed={isFocusMode}
             >
               <div className="flex items-center gap-3">
                 {ICONS.Focus}
-                <span className="font-black uppercase text-[11px] italic">Modo Zen</span>
+                <span className="font-black uppercase text-[11px] italic">Modo Zen (F)</span>
               </div>
             </button>
 
             <button 
               onClick={handleOpenKeySelector}
-              className={`w-full py-3 px-4 flex items-center justify-between border-2 ${hasCustomKey ? 'border-emerald-500 text-emerald-400' : 'border-slate-700 text-slate-500'}`}
+              className={`w-full py-3 px-4 flex items-center justify-between border-2 transition-all hover:brightness-110 ${hasCustomKey ? 'border-emerald-500 text-emerald-400 bg-emerald-950/10' : 'border-slate-700 text-slate-500 bg-slate-900'}`}
             >
               <div className="flex items-center gap-3">
                 <Key size={16} />
