@@ -2,23 +2,32 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { NarrativeUnit } from "../types";
 
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined") {
+    throw new Error("API_KEY_MISSING");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 /**
  * Analisa a página do mangá transformando-a em uma jornada auditiva cinematográfica.
  */
 export async function analyzeMangaImage(base64Image: string): Promise<NarrativeUnit[]> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: base64Image,
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Image,
+            },
           },
-        },
-        {
-          text: `Aja como um Diretor de Dublagem e Mestre de Narrativas. Converta este mangá em uma experiência auditiva imersiva para deficientes visuais.
+          {
+            text: `Aja como um Diretor de Dublagem e Mestre de Narrativas. Converta este mangá em uma experiência auditiva imersiva para deficientes visuais.
 
 REGRAS DE OURO:
 1. IDENTIFICAÇÃO: Identifique o gênero, idade e tom de cada personagem.
@@ -33,38 +42,40 @@ REGRAS DE OURO:
 4. TEXTO: Mantenha tudo em Português do Brasil (PT-BR).
 
 Retorne um array JSON com: originalText, description, combinedNarrative, voicePreference.`
-        },
-      ],
-    },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            originalText: { type: Type.STRING },
-            description: { type: Type.STRING },
-            combinedNarrative: { type: Type.STRING },
-            voicePreference: { 
-              type: Type.STRING, 
-              enum: ['Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr']
-            },
           },
-          required: ["originalText", "description", "combinedNarrative", "voicePreference"],
+        ],
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              originalText: { type: Type.STRING },
+              description: { type: Type.STRING },
+              combinedNarrative: { type: Type.STRING },
+              voicePreference: { 
+                type: Type.STRING, 
+                enum: ['Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr']
+              },
+            },
+            required: ["originalText", "description", "combinedNarrative", "voicePreference"],
+          },
         },
       },
-    },
-  });
+    });
 
-  try {
     const data = JSON.parse(response.text || '[]');
     return data.map((item: any, index: number) => ({
       ...item,
       id: `unit-${Date.now()}-${index}`,
       imageUrl: `data:image/jpeg;base64,${base64Image}`
     }));
-  } catch (e) {
+  } catch (e: any) {
+    if (e.message === "API_KEY_MISSING") {
+      throw new Error("Configuração incompleta: A API Key do Gemini não foi encontrada nas variáveis de ambiente.");
+    }
     console.error("Erro na análise imersiva", e);
     throw new Error("O narrador se perdeu na história. Tente novamente.");
   }
@@ -100,7 +111,7 @@ export async function decodeAudioDataToBuffer(
 }
 
 export async function generateNarrationAudio(text: string, voice: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: `Interprete este texto com emoção e ritmo cinematográfico: ${text}` }] }],
