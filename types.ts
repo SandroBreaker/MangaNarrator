@@ -12,7 +12,6 @@ export interface NarrativeUnit {
   originalText: string;
   description: string;
   combinedNarrative: string;
-  voicePreference: 'Kore' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
   imageUrl?: string;
 }
 

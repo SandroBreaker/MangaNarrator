@@ -13,7 +13,7 @@ export function useNarrator() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const activeTaskIdRef = useRef<number>(0);
+  const playbackRequestIdRef = useRef<number>(0);
 
   const initAudio = () => {
     if (!audioContextRef.current) {
@@ -25,41 +25,45 @@ export function useNarrator() {
   };
 
   const stopAudio = () => {
-    // Incrementa o ID da tarefa para cancelar qualquer processo assíncrono anterior (fetch ou decode)
-    activeTaskIdRef.current += 1;
-    
+    playbackRequestIdRef.current++; // Invalida qualquer processo de áudio em andamento
     if (sourceNodeRef.current) {
       try {
-        sourceNodeRef.current.onended = null;
+        sourceNodeRef.current.onended = null; // Remove o listener para não pular para o próximo sem querer
         sourceNodeRef.current.stop();
-      } catch (e) {
-        // Áudio já parado ou não iniciado
-      }
+      } catch (e) {}
       sourceNodeRef.current = null;
     }
   };
 
   const playUnit = useCallback(async (index: number) => {
+    const requestId = ++playbackRequestIdRef.current; // ID único para esta tentativa de play
+    
     initAudio();
-    stopAudio();
+    
+    // Parar qualquer áudio físico tocando agora
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.onended = null;
+        sourceNodeRef.current.stop();
+      } catch (e) {}
+    }
 
     const unit = state.units[index];
     if (!unit) return;
 
-    const currentTaskId = activeTaskIdRef.current;
-    setState(prev => ({ ...prev, currentIndex: index, status: PlaybackStatus.PROCESSING }));
+    setState(prev => ({ ...prev, currentIndex: index, status: PlaybackStatus.PROCESSING, error: undefined }));
 
     try {
-      // Chamada à API de TTS
-      const base64 = await generateNarrationAudio(unit.combinedNarrative, unit.voicePreference);
+      const base64 = await generateNarrationAudio(unit.combinedNarrative);
       
-      // Se o usuário mudou de página enquanto o áudio carregava, aborta
-      if (currentTaskId !== activeTaskIdRef.current) return;
+      // VERIFICAÇÃO CRÍTICA: Se o ID mudou enquanto o Gemini processava, descartamos este resultado
+      if (requestId !== playbackRequestIdRef.current) {
+        console.debug("Ignorando áudio de requisição antiga.");
+        return;
+      }
 
       const audioData = decodeBase64Audio(base64);
       const buffer = await decodeAudioDataToBuffer(audioData, audioContextRef.current!);
-
-      if (currentTaskId !== activeTaskIdRef.current) return;
 
       const source = audioContextRef.current!.createBufferSource();
       source.buffer = buffer;
@@ -67,14 +71,14 @@ export function useNarrator() {
       source.connect(audioContextRef.current!.destination);
       
       source.onended = () => {
-        // Só avança se a tarefa ainda for a ativa
-        if (currentTaskId !== activeTaskIdRef.current) return;
-        
+        // Garantir que ainda somos a requisição ativa antes de avançar
+        if (requestId !== playbackRequestIdRef.current) return;
+
         setState(current => {
           if (current.status === PlaybackStatus.PLAYING && index + 1 < current.units.length) {
-            setTimeout(() => playUnit(index + 1), 600); // Pausa dramática entre quadros
+            playUnit(index + 1);
           } else if (index + 1 >= current.units.length) {
-            return { ...current, status: PlaybackStatus.IDLE };
+             return { ...current, status: PlaybackStatus.IDLE };
           }
           return current;
         });
@@ -83,10 +87,18 @@ export function useNarrator() {
       source.start(0);
       sourceNodeRef.current = source;
       setState(prev => ({ ...prev, status: PlaybackStatus.PLAYING }));
-    } catch (err) {
-      if (currentTaskId !== activeTaskIdRef.current) return;
-      console.error("Erro na narração", err);
-      setState(prev => ({ ...prev, status: PlaybackStatus.ERROR, error: "Houve uma falha ao preparar a narração deste trecho." }));
+    } catch (err: any) {
+      if (requestId !== playbackRequestIdRef.current) return;
+
+      console.error("Audio playback error", err);
+      const isQuota = err.message?.includes('429') || err.message?.includes('RESOURCE_EXHAUSTED');
+      setState(prev => ({ 
+        ...prev, 
+        status: PlaybackStatus.ERROR, 
+        error: isQuota 
+          ? "Limite de uso da IA atingido. Aguarde um momento ou configure sua própria chave API." 
+          : "Falha na narração por áudio. Verifique sua conexão." 
+      }));
     }
   }, [state.units, state.playbackSpeed]);
 
@@ -118,6 +130,10 @@ export function useNarrator() {
 
   const setSpeed = (speed: number) => {
     setState(prev => ({ ...prev, playbackSpeed: speed }));
+    // Se estiver tocando, atualiza o pitch/velocidade em tempo real
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.playbackRate.value = speed;
+    }
   };
 
   return {
